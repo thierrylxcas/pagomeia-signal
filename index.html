@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>PagoMeia Chat – Funcionando</title>
+<title>PagoMeia Chat</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 
@@ -11,14 +11,13 @@ body{
   margin:0;
   background:linear-gradient(135deg,#ff9800,#ffcc00);
   font-family:Arial, sans-serif;
-  color:#4a148c;
 }
 #app{
   max-width:900px;
   margin:auto;
   padding:20px;
 }
-h1{text-align:center}
+h1{text-align:center;color:#4a148c}
 .controls{
   display:flex;
   gap:8px;
@@ -67,16 +66,17 @@ button{
     <button onclick="sendMsg()">Enviar</button>
   </div>
 
-  <div id="status">Status: aguardando…</div>
+  <div id="status">aguardando</div>
 </div>
 
+<!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
 const SUPABASE_URL = "https://yxeowgpwumbirpmsmd.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZW93Z3B3dW1iaXJwcG1zc21kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1OTIxMTIsImV4cCI6MjA4MjE2ODExMn0.AJbhuRS2f5ZnX2piwVoiPQ2RW3NK6SyqlsMrCxaAgkU";
 
-const supabase = supabaseJs.createClient(
+const supabase = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
 );
@@ -87,8 +87,8 @@ let lastId = 0;
 const chat = document.getElementById("chat");
 const statusBox = document.getElementById("status");
 
-function status(msg){
-  statusBox.innerText = "Status: " + msg;
+function setStatus(t){
+  statusBox.innerText = t;
 }
 
 async function join(){
@@ -98,13 +98,21 @@ async function join(){
     return;
   }
 
-  status("conectado como " + username);
+  setStatus("conectado como " + username);
 
-  await supabase.from("messages").insert({
-    username: "Sistema",
-    text: username + " entrou na sala"
-  });
+  const { error } = await supabase
+    .from("messages")
+    .insert({
+      username: "Sistema",
+      text: username + " entrou na sala"
+    });
 
+  if(error){
+    setStatus("erro: " + error.message);
+    return;
+  }
+
+  loadMessages();
   setInterval(loadMessages, 1500);
 }
 
@@ -112,10 +120,14 @@ async function sendMsg(){
   const text = document.getElementById("msg").value.trim();
   if(!text || !username) return;
 
-  await supabase.from("messages").insert({
-    username,
-    text
-  });
+  const { error } = await supabase
+    .from("messages")
+    .insert({ username, text });
+
+  if(error){
+    setStatus("erro ao enviar");
+    return;
+  }
 
   document.getElementById("msg").value = "";
 }
@@ -128,7 +140,7 @@ async function loadMessages(){
     .order("id", { ascending:true });
 
   if(error){
-    status("erro: " + error.message);
+    setStatus("erro: " + error.message);
     return;
   }
 
