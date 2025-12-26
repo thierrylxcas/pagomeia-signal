@@ -2,26 +2,46 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Teste JS PagoMeia</title>
+<title>Teste Supabase</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 
 <body>
 
-<h1>Teste PagoMeia</h1>
-
-<input id="username" placeholder="Seu nome">
-<button onclick="join()">Entrar</button>
-
+<h1>Teste Supabase</h1>
+<button onclick="testar()">Testar Conexão</button>
 <p id="status">aguardando</p>
 
-<script>
-console.log("JS CARREGOU");
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-function join(){
-  console.log("FUNÇÃO JOIN CHAMADA");
-  alert("FUNCIONOU! Nome: " + document.getElementById("username").value);
-  document.getElementById("status").innerText = "clicou no botão";
+<script>
+console.log("SCRIPT INICIADO");
+
+const SUPABASE_URL = "https://yxeowgpwumbirpmsmd.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZW93Z3B3dW1iaXJwcG1zc21kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1OTIxMTIsImV4cCI6MjA4MjE2ODExMn0.AJbhuRS2f5ZnX2piwVoiPQ2RW3NK6SyqlsMrCxaAgkU";
+
+const client = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+console.log("CLIENTE CRIADO", client);
+
+async function testar(){
+  console.log("CLICOU TESTAR");
+
+  const { data, error } = await client
+    .from("messages")
+    .select("count", { count: "exact" });
+
+  if(error){
+    console.error("ERRO SUPABASE:", error);
+    document.getElementById("status").innerText = "ERRO: " + error.message;
+    return;
+  }
+
+  document.getElementById("status").innerText =
+    "CONECTOU! Registros: " + data.length;
 }
 </script>
 
