@@ -2,9 +2,8 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>PagoMeia Watch Party</title>
+<title>PagoMeia Chat – Debug</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <link rel="icon" href="data:,">
 
 <style>
@@ -43,13 +42,23 @@ button{
   overflow-y:auto;
   border-radius:12px;
 }
+#log{
+  margin-top:10px;
+  background:#000;
+  color:#0f0;
+  font-size:12px;
+  padding:8px;
+  border-radius:8px;
+  height:120px;
+  overflow-y:auto;
+}
 </style>
 </head>
 
 <body>
 
 <div id="app">
-  <h1>💬 PagoMeia Chat</h1>
+  <h1>💬 PagoMeia Chat (Debug)</h1>
 
   <div class="controls">
     <input id="username" placeholder="Seu nome">
@@ -62,15 +71,16 @@ button{
     <input id="msg" placeholder="Mensagem">
     <button onclick="sendMsg()">Enviar</button>
   </div>
+
+  <div id="log"></div>
 </div>
 
-<!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
 /* ===== CONFIGURAÇÃO ===== */
-const SUPABASE_URL = "https://SEU-PROJETO.supabase.co";
-const SUPABASE_ANON_KEY = "SUA_ANON_PUBLIC_KEY";
+const SUPABASE_URL = "https://yxeowgpwumbirppmssmd.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_JYqJrlOtlH12J1xhgAaObw_MU4R8P0-";
 /* ======================= */
 
 const supabase = supabaseJs.createClient(
@@ -79,47 +89,81 @@ const supabase = supabaseJs.createClient(
 );
 
 let username = "";
+let lastId = 0;
+const chat = document.getElementById("chat");
+const logBox = document.getElementById("log");
 
-function join(){
+function log(msg){
+  logBox.innerHTML += msg + "<br>";
+  logBox.scrollTop = logBox.scrollHeight;
+}
+
+log("JS carregado");
+
+async function join(){
   username = document.getElementById("username").value.trim();
   if(!username){
     alert("Digite um nome");
     return;
   }
 
-  alert("Entrou como " + username);
-  listenChat();
+  log("Entrou como: " + username);
+
+  await sendSystemMessage(username + " entrou na sala");
+  startPolling();
 }
 
-function sendMsg(){
+async function sendMsg(){
   const text = document.getElementById("msg").value.trim();
   if(!text || !username) return;
 
-  supabase.from("messages").insert({
-    username: username,
-    text: text
-  });
+  const { error } = await supabase
+    .from("messages")
+    .insert({ username, text });
+
+  if(error){
+    log("ERRO INSERT: " + error.message);
+  }else{
+    log("Mensagem enviada");
+  }
 
   document.getElementById("msg").value = "";
 }
 
-function listenChat(){
-  supabase.channel("chat")
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "messages"
-      },
-      payload => {
-        const m = payload.new;
-        const chat = document.getElementById("chat");
-        chat.innerHTML += `<div><b>${m.username}:</b> ${m.text}</div>`;
-        chat.scrollTop = chat.scrollHeight;
-      }
-    )
-    .subscribe();
+async function sendSystemMessage(text){
+  const { error } = await supabase
+    .from("messages")
+    .insert({ username: "Sistema", text });
+
+  if(error){
+    log("ERRO SISTEMA: " + error.message);
+  }
+}
+
+function startPolling(){
+  setInterval(loadMessages, 1500);
+}
+
+async function loadMessages(){
+  const { data, error } = await supabase
+    .from("messages")
+    .select("*")
+    .gt("id", lastId)
+    .order("id", { ascending: true });
+
+  if(error){
+    log("ERRO SELECT: " + error.message);
+    return;
+  }
+
+  data.forEach(m => {
+    chat.innerHTML += `<div><b>${m.username}:</b> ${m.text}</div>`;
+    lastId = m.id;
+  });
+
+  if(data.length > 0){
+    chat.scrollTop = chat.scrollHeight;
+  }
 }
 </script>
 
