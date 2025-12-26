@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>PagoMeia Chat – Debug</title>
+<title>PagoMeia Chat – Funcionando</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 
@@ -42,15 +42,10 @@ button{
   overflow-y:auto;
   border-radius:12px;
 }
-#log{
+#status{
   margin-top:10px;
-  background:#000;
-  color:#0f0;
-  font-size:12px;
-  padding:8px;
-  border-radius:8px;
-  height:120px;
-  overflow-y:auto;
+  text-align:center;
+  font-size:14px;
 }
 </style>
 </head>
@@ -58,7 +53,7 @@ button{
 <body>
 
 <div id="app">
-  <h1>💬 PagoMeia Chat (Debug)</h1>
+  <h1>💬 PagoMeia Chat</h1>
 
   <div class="controls">
     <input id="username" placeholder="Seu nome">
@@ -72,16 +67,14 @@ button{
     <button onclick="sendMsg()">Enviar</button>
   </div>
 
-  <div id="log"></div>
+  <div id="status">Status: aguardando…</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-/* ===== CONFIGURAÇÃO ===== */
-const SUPABASE_URL = "https://yxeowgpwumbirppmssmd.supabase.co";
+const SUPABASE_URL = "https://yxeowgpwumbirpmsmd.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZW93Z3B3dW1iaXJwcG1zc21kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1OTIxMTIsImV4cCI6MjA4MjE2ODExMn0.AJbhuRS2f5ZnX2piwVoiPQ2RW3NK6SyqlsMrCxaAgkU";
-/* ======================= */
 
 const supabase = supabaseJs.createClient(
   SUPABASE_URL,
@@ -90,15 +83,13 @@ const supabase = supabaseJs.createClient(
 
 let username = "";
 let lastId = 0;
+
 const chat = document.getElementById("chat");
-const logBox = document.getElementById("log");
+const statusBox = document.getElementById("status");
 
-function log(msg){
-  logBox.innerHTML += msg + "<br>";
-  logBox.scrollTop = logBox.scrollHeight;
+function status(msg){
+  statusBox.innerText = "Status: " + msg;
 }
-
-log("JS carregado");
 
 async function join(){
   username = document.getElementById("username").value.trim();
@@ -107,41 +98,26 @@ async function join(){
     return;
   }
 
-  log("Entrou como: " + username);
+  status("conectado como " + username);
 
-  await sendSystemMessage(username + " entrou na sala");
-  startPolling();
+  await supabase.from("messages").insert({
+    username: "Sistema",
+    text: username + " entrou na sala"
+  });
+
+  setInterval(loadMessages, 1500);
 }
 
 async function sendMsg(){
   const text = document.getElementById("msg").value.trim();
   if(!text || !username) return;
 
-  const { error } = await supabase
-    .from("messages")
-    .insert({ username, text });
-
-  if(error){
-    log("ERRO INSERT: " + error.message);
-  }else{
-    log("Mensagem enviada");
-  }
+  await supabase.from("messages").insert({
+    username,
+    text
+  });
 
   document.getElementById("msg").value = "";
-}
-
-async function sendSystemMessage(text){
-  const { error } = await supabase
-    .from("messages")
-    .insert({ username: "Sistema", text });
-
-  if(error){
-    log("ERRO SISTEMA: " + error.message);
-  }
-}
-
-function startPolling(){
-  setInterval(loadMessages, 1500);
 }
 
 async function loadMessages(){
@@ -149,10 +125,10 @@ async function loadMessages(){
     .from("messages")
     .select("*")
     .gt("id", lastId)
-    .order("id", { ascending: true });
+    .order("id", { ascending:true });
 
   if(error){
-    log("ERRO SELECT: " + error.message);
+    status("erro: " + error.message);
     return;
   }
 
@@ -161,7 +137,7 @@ async function loadMessages(){
     lastId = m.id;
   });
 
-  if(data.length > 0){
+  if(data.length){
     chat.scrollTop = chat.scrollHeight;
   }
 }
