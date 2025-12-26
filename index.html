@@ -2,156 +2,26 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>PagoMeia Chat</title>
+<title>Teste JS PagoMeia</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="data:,">
-
-<style>
-body{
-  margin:0;
-  background:linear-gradient(135deg,#ff9800,#ffcc00);
-  font-family:Arial, sans-serif;
-}
-#app{
-  max-width:900px;
-  margin:auto;
-  padding:20px;
-}
-h1{text-align:center;color:#4a148c}
-.controls{
-  display:flex;
-  gap:8px;
-  justify-content:center;
-  margin:10px 0;
-}
-input,button{
-  padding:10px;
-  border:none;
-  border-radius:8px;
-}
-button{
-  background:#6a1b9a;
-  color:#fff;
-  cursor:pointer;
-}
-#chat{
-  background:rgba(255,255,255,.4);
-  padding:10px;
-  height:250px;
-  overflow-y:auto;
-  border-radius:12px;
-}
-#status{
-  margin-top:10px;
-  text-align:center;
-  font-size:14px;
-}
-</style>
 </head>
 
 <body>
 
-<div id="app">
-  <h1>💬 PagoMeia Chat</h1>
+<h1>Teste PagoMeia</h1>
 
-  <div class="controls">
-    <input id="username" placeholder="Seu nome">
-    <button onclick="join()">Entrar</button>
-  </div>
+<input id="username" placeholder="Seu nome">
+<button onclick="join()">Entrar</button>
 
-  <div id="chat"></div>
-
-  <div class="controls">
-    <input id="msg" placeholder="Mensagem">
-    <button onclick="sendMsg()">Enviar</button>
-  </div>
-
-  <div id="status">aguardando</div>
-</div>
-
-<!-- SUPABASE -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<p id="status">aguardando</p>
 
 <script>
-const SUPABASE_URL = "https://yxeowgpwumbirpmsmd.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4ZW93Z3B3dW1iaXJwcG1zc21kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1OTIxMTIsImV4cCI6MjA4MjE2ODExMn0.AJbhuRS2f5ZnX2piwVoiPQ2RW3NK6SyqlsMrCxaAgkU";
+console.log("JS CARREGOU");
 
-const supabase = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
-
-let username = "";
-let lastId = 0;
-
-const chat = document.getElementById("chat");
-const statusBox = document.getElementById("status");
-
-function setStatus(t){
-  statusBox.innerText = t;
-}
-
-async function join(){
-  username = document.getElementById("username").value.trim();
-  if(!username){
-    alert("Digite um nome");
-    return;
-  }
-
-  setStatus("conectado como " + username);
-
-  const { error } = await supabase
-    .from("messages")
-    .insert({
-      username: "Sistema",
-      text: username + " entrou na sala"
-    });
-
-  if(error){
-    setStatus("erro: " + error.message);
-    return;
-  }
-
-  loadMessages();
-  setInterval(loadMessages, 1500);
-}
-
-async function sendMsg(){
-  const text = document.getElementById("msg").value.trim();
-  if(!text || !username) return;
-
-  const { error } = await supabase
-    .from("messages")
-    .insert({ username, text });
-
-  if(error){
-    setStatus("erro ao enviar");
-    return;
-  }
-
-  document.getElementById("msg").value = "";
-}
-
-async function loadMessages(){
-  const { data, error } = await supabase
-    .from("messages")
-    .select("*")
-    .gt("id", lastId)
-    .order("id", { ascending:true });
-
-  if(error){
-    setStatus("erro: " + error.message);
-    return;
-  }
-
-  data.forEach(m => {
-    chat.innerHTML += `<div><b>${m.username}:</b> ${m.text}</div>`;
-    lastId = m.id;
-  });
-
-  if(data.length){
-    chat.scrollTop = chat.scrollHeight;
-  }
+function join(){
+  console.log("FUNÇÃO JOIN CHAMADA");
+  alert("FUNCIONOU! Nome: " + document.getElementById("username").value);
+  document.getElementById("status").innerText = "clicou no botão";
 }
 </script>
 
