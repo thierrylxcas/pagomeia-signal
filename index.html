@@ -8,7 +8,6 @@
 <style>
 body{
   margin:0;
-  min-height:100vh;
   background:linear-gradient(135deg,#ff9800,#ffcc00);
   font-family:Arial, sans-serif;
   color:#4a148c;
@@ -18,51 +17,34 @@ body{
   margin:auto;
   padding:20px;
 }
-h1{
-  text-align:center;
-  margin-bottom:10px;
-}
+h1{text-align:center}
 video{
   width:100%;
   background:#000;
   border-radius:16px;
-  margin-bottom:10px;
 }
 #controls{
   display:flex;
-  flex-wrap:wrap;
   gap:8px;
   justify-content:center;
-  margin-bottom:10px;
+  margin:10px 0;
 }
-input, button{
+input,button{
   padding:10px;
   border:none;
   border-radius:8px;
-  font-size:14px;
 }
 button{
   background:#6a1b9a;
   color:#fff;
   cursor:pointer;
 }
-button:hover{
-  opacity:.9;
-}
 #chat{
-  background:rgba(255,255,255,0.35);
+  background:rgba(255,255,255,.35);
   padding:10px;
-  border-radius:12px;
-  height:250px;
+  height:220px;
   overflow-y:auto;
-  margin-bottom:8px;
-}
-.msg{
-  margin:4px 0;
-}
-#send{
-  display:flex;
-  gap:8px;
+  border-radius:12px;
 }
 </style>
 </head>
@@ -75,34 +57,36 @@ button:hover{
 
   <div id="controls">
     <input id="username" placeholder="Seu nome">
-    <button onclick="join()">Entrar</button>
-    <button onclick="startShare()">🎥 Compartilhar Tela (HOST)</button>
+    <button id="joinBtn">Entrar</button>
+    <button id="shareBtn" style="display:none">🎥 Compartilhar (HOST)</button>
   </div>
 
   <div id="chat"></div>
 
-  <div id="send">
-    <input id="msg" placeholder="Mensagem...">
-    <button onclick="sendMsg()">Enviar</button>
+  <div id="controls">
+    <input id="msg" placeholder="Mensagem">
+    <button id="sendBtn">Enviar</button>
   </div>
 </div>
 
-<!-- SUPABASE SDK -->
+<!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-/* ==================================================
-   🔧 CONFIGURAÇÃO (MUDE SOMENTE ISSO)
-================================================== */
+/* =====================================================
+   CONFIGURAÇÃO — TROQUE APENAS ISSO
+===================================================== */
 
-// 🔹 SUPABASE
-const SUPABASE_URL = "https://yxeowgpwumbirppmssmd.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_JYqJrlOtlH12J1xhgAaObw_MU4R8P0-";
+// <-- TROCAR
+const SUPABASE_URL = "https://SEU-PROJETO.supabase.co";
+const SUPABASE_ANON_KEY = "SUA_ANON_PUBLIC_KEY";
 
-// 🔹 WEBSOCKET (RENDER)
-const WSS_URL = "https://pagomeia-signal.onrender.com/";
+// <-- TROCAR
+const WSS_URL = "wss://SEU-SERVIDOR.onrender.com";
 
-/* ================================================== */
+/* ===================================================== */
+
+alert("JS carregou corretamente"); // PROVA DE VIDA
 
 const supabase = supabaseJs.createClient(
   SUPABASE_URL,
@@ -111,107 +95,28 @@ const supabase = supabaseJs.createClient(
 
 const video = document.getElementById("video");
 const chat = document.getElementById("chat");
+const usernameInput = document.getElementById("username");
+const msgInput = document.getElementById("msg");
+const joinBtn = document.getElementById("joinBtn");
+const sendBtn = document.getElementById("sendBtn");
+const shareBtn = document.getElementById("shareBtn");
 
 let username = "";
-let socket;
-let pc;
+let socket = null;
+let pc = null;
+let isHost = false;
 
-/* ================= CHAT ================= */
+/* ================== ENTRAR ================== */
+joinBtn.onclick = () => {
+  username = usernameInput.value.trim();
+  if(!username) return alert("Digite um nome");
 
-function join(){
-  username = document.getElementById("username").value.trim();
-  if(!username){
-    alert("Digite um nome");
-    return;
-  }
-
-  socket = new WebSocket(WSS_URL);
-
-  socket.onmessage = async e => {
-    const data = JSON.parse(e.data);
-
-    if(data.offer){
-      pc = createPeer();
-      await pc.setRemoteDescription(data.offer);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      socket.send(JSON.stringify({ answer }));
-    }
-
-    if(data.candidate && pc){
-      pc.addIceCandidate(data.candidate);
-    }
-  };
-
-  listenChat();
-}
-
-function sendMsg(){
-  const text = document.getElementById("msg").value.trim();
-  if(!text) return;
-
-  supabase.from("messages").insert({
-    username: username,
-    text: text
-  });
-
-  document.getElementById("msg").value = "";
-}
-
-function listenChat(){
-  supabase.channel("chat")
-    .on(
-      "postgres_changes",
-      { event:"INSERT", schema:"public", table:"messages" },
-      payload => {
-        const m = payload.new;
-        chat.innerHTML += `<div class="msg"><b>${m.username}:</b> ${m.text}</div>`;
-        chat.scrollTop = chat.scrollHeight;
-      }
-    )
-    .subscribe();
-}
-
-/* ================= WEBRTC ================= */
-
-function createPeer(){
-  const peer = new RTCPeerConnection();
-
-  peer.ontrack = e => {
-    video.srcObject = e.streams[0];
-  };
-
-  peer.onicecandidate = e => {
-    if(e.candidate){
-      socket.send(JSON.stringify({ candidate: e.candidate }));
-    }
-  };
-
-  return peer;
-}
-
-async function startShare(){
   if(!socket){
-    alert("Entre primeiro com seu nome");
-    return;
-  }
+    socket = new WebSocket(WSS_URL);
 
-  pc = createPeer();
+    socket.onmessage = async e => {
+      const data = JSON.parse(e.data);
 
-  const stream = await navigator.mediaDevices.getDisplayMedia({
-    video:true,
-    audio:true
-  });
-
-  stream.getTracks().forEach(t => pc.addTrack(t, stream));
-  video.srcObject = stream;
-
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-
-  socket.send(JSON.stringify({ offer }));
-}
-</script>
-
-</body>
-</html>
+      if(data.offer){
+        pc = createPeer();
+        await pc.setRemoteDescription(data.o
