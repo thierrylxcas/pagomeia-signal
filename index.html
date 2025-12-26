@@ -5,7 +5,6 @@
 <title>PagoMeia Watch Party</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- remove favicon error -->
 <link rel="icon" href="data:,">
 
 <style>
@@ -21,12 +20,6 @@ body{
   padding:20px;
 }
 h1{text-align:center}
-video{
-  width:100%;
-  height:300px;
-  background:#000;
-  border-radius:16px;
-}
 .controls{
   display:flex;
   gap:8px;
@@ -46,7 +39,7 @@ button{
 #chat{
   background:rgba(255,255,255,.4);
   padding:10px;
-  height:200px;
+  height:250px;
   overflow-y:auto;
   border-radius:12px;
 }
@@ -55,19 +48,12 @@ button{
 
 <body>
 
-<script>
-alert("SCRIPT EXECUTOU — SE VOCÊ VÊ ISSO, O JS ESTÁ VIVO");
-</script>
-
 <div id="app">
-  <h1>🎬 PagoMeia Watch Party</h1>
-
-  <video id="video" autoplay playsinline></video>
+  <h1>💬 PagoMeia Chat</h1>
 
   <div class="controls">
     <input id="username" placeholder="Seu nome">
     <button onclick="join()">Entrar</button>
-    <button onclick="share()">Compartilhar (HOST)</button>
   </div>
 
   <div id="chat"></div>
@@ -78,19 +64,62 @@ alert("SCRIPT EXECUTOU — SE VOCÊ VÊ ISSO, O JS ESTÁ VIVO");
   </div>
 </div>
 
+<!-- SUPABASE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
-/* ===== FUNÇÕES DIRETAS ===== */
+/* ===== CONFIGURAÇÃO ===== */
+const SUPABASE_URL = "https://SEU-PROJETO.supabase.co";
+const SUPABASE_ANON_KEY = "SUA_ANON_PUBLIC_KEY";
+/* ======================= */
+
+const supabase = supabaseJs.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+let username = "";
 
 function join(){
-  alert("BOTÃO ENTRAR FUNCIONANDO");
+  username = document.getElementById("username").value.trim();
+  if(!username){
+    alert("Digite um nome");
+    return;
+  }
+
+  alert("Entrou como " + username);
+  listenChat();
 }
 
 function sendMsg(){
-  alert("BOTÃO ENVIAR FUNCIONANDO");
+  const text = document.getElementById("msg").value.trim();
+  if(!text || !username) return;
+
+  supabase.from("messages").insert({
+    username: username,
+    text: text
+  });
+
+  document.getElementById("msg").value = "";
 }
 
-function share(){
-  alert("BOTÃO COMPARTILHAR FUNCIONANDO");
+function listenChat(){
+  supabase.channel("chat")
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "messages"
+      },
+      payload => {
+        const m = payload.new;
+        const chat = document.getElementById("chat");
+        chat.innerHTML += `<div><b>${m.username}:</b> ${m.text}</div>`;
+        chat.scrollTop = chat.scrollHeight;
+      }
+    )
+    .subscribe();
 }
 </script>
 
